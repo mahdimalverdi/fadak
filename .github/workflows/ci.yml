@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.18
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -o gin-go-app .
+
+      - name: Test
+        run: go test ./...
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Custom Registry
+        run: echo "${{ secrets.CUSTOM_REGISTRY_PASSWORD }}" | docker login https://registry-c5ba420b11-mahdi-test.apps.ir-thr-ba1.arvancaas.ir -u ${{ secrets.CUSTOM_REGISTRY_USERNAME }} --password-stdin
+
+      - name: Build and tag Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_VAR=${{ secrets.NEXT_PUBLIC_VAR }} \
+            -t fadak-front .
+          docker tag fadak-front registry-c5ba420b11-mahdi-test.apps.ir-thr-ba1.arvancaas.ir/fadak:latest
+
+      - name: Push Docker image to Custom Registry
+        run: docker push registry-c5ba420b11-mahdi-test.apps.ir-thr-ba1.arvancaas.ir/fadak:latest
